@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
-message("Using toolchain file ${CMAKE_TOOLCHAIN_FILE}.")
+message(DEBUG "Using toolchain file '${CMAKE_TOOLCHAIN_FILE}'.")
+message(DEBUG "Using C compiler '${CMAKE_C_COMPILER}'.")
+message(DEBUG "Using C++ compiler '${CMAKE_CXX_COMPILER}'.")
 
 ########################################################################################################################
 ## Define project
@@ -11,7 +13,7 @@ project(
         LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION "$<$<CONFIG:RELEASE>:ON>")
 
 include(GNUInstallDirs)
 
@@ -58,8 +60,6 @@ find_path(ARTICUNO_INCLUDE_DIRS "articuno/articuno.h")
 add_commonlibsse_plugin(${PROJECT_NAME} SOURCES ${headers} ${sources})
 add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
 
-add_library("${PROJECT_NAME}::${PROJECT_NAME}" ALIAS "${PROJECT_NAME}")
-
 target_include_directories(${PROJECT_NAME}
         PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
@@ -88,7 +88,7 @@ install(TARGETS ${PROJECT_NAME}
 ########################################################################################################################
 ## Configure unit tests
 ########################################################################################################################
-if(BUILD_TESTS)
+if(BUILD_TESTS AND NOT " ${tests}" STREQUAL " ")
     find_package(Catch2 CONFIG REQUIRED)
 
     include(CTest)

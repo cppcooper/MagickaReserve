@@ -1,5 +1,5 @@
 {
-    "version": 2,
+    "version": 3,
     "cmakeMinimumRequired": {
         "major": 3,
         "minor": 21,
@@ -7,99 +7,198 @@
     },
     "configurePresets": [
         {
-            "name": "base",
+            "name": "common",
             "hidden": true,
             "cacheVariables": {
-                "CMAKE_CXX_FLAGS": "$env{COMMONLIBSSE_COMPILER} $env{COMMONLIBSSE_PLATFORM} $env{COMMONLIBSSE_TEXT}"
-            }
-        },
-        {
-            "name": "vcpkg",
-            "hidden": true,
-            "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-                "VCPKG_TARGET_TRIPLET": "x64-windows-skse",
-                "VCPKG_HOST_TRIPLET": "x64-windows-skse",
-                "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake",
-                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
-            }
-        },
-        {
-            "name": "win32",
-            "hidden": true,
-            "environment": {
-                "COMMONLIBSSE_PLATFORM": "-DWIN32_LEAN_AND_MEAN -DNOMINMAX"
-            }
-        },
-        {
-            "name": "win32-unicode",
-            "hidden": true,
-            "inherits": "win32",
-            "environment": {
-                "COMMONLIBSSE_TEXT": "-DUNICODE -D_UNICODE"
-            }
-        },
-        {
-            "name": "x64",
-            "hidden": true,
-            "architecture": {
-                "value": "x64",
-                "strategy": "external"
-            }
-        },
-        {
-            "name": "msvc",
-            "hidden": true,
-            "environment": {
-                "COMMONLIBSSE_COMPILER": "/permissive- /Zc:preprocessor /EHsc $penv{CXXFLAGS}"
+                "CMAKE_CXX_FLAGS": "$env{PROJECT_PLATFORM_FLAGS} $env{PROJECT_TEXT_FLAGS} $env{PROJECT_COMPILER_FLAGS} $penv{CXX_FLAGS}"
             },
             "vendor": {
                 "microsoft.com/VisualStudioSettings/CMake/1.0": {
-                    "intelliSenseMode": "windows-msvc-x64",
+                    "intelliSenseMode": "$env{PROJECT_PLATFORM}-$env{PROJECT_COMPILER}-$env{PROJECT_ARCHITECTURE}",
                     "enableMicrosoftCodeAnalysis": true,
                     "enableClangTidyCodeAnalysis": true
                 }
             }
         },
+
         {
-            "name": "clang-cl",
+            "name": "architecture-arm64",
             "hidden": true,
+            "architecture": {
+                "value": "arm64",
+                "strategy": "external"
+            },
+            "environment": {
+                "PROJECT_ARCHITECTURE": "arm64"
+            }
+        },
+        {
+            "name": "architecture-x64",
+            "hidden": true,
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "environment": {
+                "PROJECT_ARCHITECTURE": "x64"
+            }
+        },
+
+        {
+            "name": "platform-mac",
+            "hidden": true,
+            "environment": {
+                "PROJECT_PLATFORM": "ios"
+            }
+        },
+        {
+            "name": "platform-linux",
+            "hidden": true,
+            "environment": {
+                "PROJECT_PLATFORM": "linux"
+            }
+        },
+        {
+            "name": "platform-win32",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL"
+            },
+            "environment": {
+                "PROJECT_PLATFORM_FLAGS": "-DWIN32_LEAN_AND_MEAN -DNOMINMAX",
+                "PROJECT_PLATFORM": "windows"
+            }
+        },
+        {
+            "name": "platform-win32-unicode",
+            "hidden": true,
+            "inherits": "platform-win32",
+            "environment": {
+                "PROJECT_TEXT_FLAGS": "-DUNICODE -D_UNICODE"
+            }
+        },
+
+        {
+            "name": "abi-itanium",
+            "hidden": true
+        },
+        {
+            "name": "abi-msvc",
+            "hidden": true
+        },
+
+        {
+            "name": "packaging-vcpkg",
+            "hidden": true,
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "$env{PROJECT_ARCHITECTURE}-$env{PROJECT_PLATFORM}-skse",
+                "VCPKG_HOST_TRIPLET": "$env{PROJECT_ARCHITECTURE}-$env{PROJECT_PLATFORM}-skse",
+                "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake"
+            }
+        },
+        {
+            "name": "packaging-conan",
+            "hidden": true,
+            "toolchainFile": "${sourceDir}/build/generators/conan_toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_POLICY_DEFAULT_CMP0091": "NEW",
+                "CONAN_DISABLE_CHECK_COMPILER": "ON",
+                "USE_CONAN": "ON"
+            }
+        },
+
+        {
+            "name": "generator-ninja",
+            "hidden": true,
+            "generator": "Ninja"
+        },
+
+        {
+            "name": "testing",
+            "hidden": true,
+            "cacheVariables": {
+                "BUILD_TESTS": "ON"
+            }
+        },
+
+        {
+            "name": "compiler-clang",
+            "hidden": true,
+            "environment": {
+                "PROJECT_COMPILER": "clang",
+                "PROJECT_COMPILER_FLAGS": "-Wno-overloaded-virtual -Wno-delete-non-abstract-non-virtual-dtor -D__cpp_lib_char8_t -D__cpp_consteval -D__cpp_lib_format"
+            }
+        },
+        {
+            "name": "compiler-gcc",
+            "hidden": true,
+            "environment": {
+                "PROJECT_COMPILER": "gcc"
+            }
+        },
+        {
+            "name": "compiler-msvc",
+            "hidden": true,
+            "environment": {
+                "PROJECT_COMPILER_FLAGS": "/EHsc /permissive- /Zc:preprocessor",
+                "PROJECT_COMPILER": "msvc"
+            }
+        },
+        {
+            "name": "compiler-clang-cl",
+            "hidden": true,
+            "inherits": "compiler-clang",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "clang-cl",
                 "CMAKE_CXX_COMPILER": "clang-cl"
             },
             "environment": {
-                "COMMONLIBSSE_COMPILER": "/permissive- /EHsc -Wno-overloaded-virtual -Wno-delete-non-abstract-non-virtual-dtor -D__cpp_lib_char8_t -D__cpp_consteval -D__cpp_lib_format $penv{CXXFLAGS}"
-            },
-            "vendor": {
-                "microsoft.com/VisualStudioSettings/CMake/1.0": {
-                    "intelliSenseMode": "windows-clang-x64",
-                    "enableMicrosoftCodeAnalysis": true,
-                    "enableClangTidyCodeAnalysis": true
-                }
+                "PROJECT_COMPILER_FLAGS": "/EHsc /permissive- -Wno-overloaded-virtual -Wno-delete-non-abstract-non-virtual-dtor -D__cpp_lib_char8_t -D__cpp_consteval -D__cpp_lib_format"
             }
         },
+
         {
-            "name": "build-tests",
-            "displayName": "Build Tests",
+            "name": "buildtype-debug",
             "hidden": true,
-            "description": "Include test suites in the build.",
             "cacheVariables": {
-                "BUILD_TESTS": {
-                    "type": "STRING",
-                    "value": "ON"
-                }
+                "CMAKE_BUILD_TYPE": "Debug"
             }
         },
         {
-            "name": "build-debug-msvc",
+            "name": "buildtype-release",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "buildtype-relwithdebinfo",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
+        {
+            "name": "buildtype-minsizerel",
+            "hidden": true,
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "MinSizeRel"
+            }
+        },
+
+        {
+            "name": "build-debug-msvc-conan",
             "inherits": [
-                "base",
-                "vcpkg",
-                "win32-unicode",
-                "x64",
-                "build-tests",
-                "msvc"
+                "architecture-x64",
+                "platform-win32-unicode",
+                "abi-msvc",
+                "generator-ninja",
+                "packaging-conan",
+                "compiler-msvc",
+                "buildtype-debug",
+                "testing",
+                "common"
             ],
             "displayName": "Debug",
             "description": "Debug build for testing.",
@@ -113,14 +212,17 @@
             }
         },
         {
-            "name": "build-release-msvc",
+            "name": "build-release-msvc-conan",
             "inherits": [
-                "base",
-                "vcpkg",
-                "win32-unicode",
-                "x64",
-                "build-tests",
-                "msvc"
+                "architecture-x64",
+                "platform-win32-unicode",
+                "abi-msvc",
+                "generator-ninja",
+                "packaging-conan",
+                "compiler-msvc",
+                "buildtype-release",
+                "testing",
+                "common"
             ],
             "displayName": "Release",
             "description": "Optimized release build.",
@@ -134,14 +236,17 @@
             }
         },
         {
-            "name": "build-debug-clang-cl",
+            "name": "build-debug-clang-cl-conan",
             "inherits": [
-                "base",
-                "vcpkg",
-                "win32-unicode",
-                "x64",
-                "build-tests",
-                "clang-cl"
+                "architecture-x64",
+                "platform-win32-unicode",
+                "abi-msvc",
+                "generator-ninja",
+                "packaging-conan",
+                "compiler-clang-cl",
+                "buildtype-debug",
+                "testing",
+                "common"
             ],
             "displayName": "Debug",
             "description": "Debug build for testing.",
@@ -155,14 +260,17 @@
             }
         },
         {
-            "name": "build-release-clang-cl",
+            "name": "build-release-clang-cl-conan",
             "inherits": [
-                "base",
-                "vcpkg",
-                "win32-unicode",
-                "x64",
-                "build-tests",
-                "clang-cl"
+                "architecture-x64",
+                "platform-win32-unicode",
+                "abi-msvc",
+                "generator-ninja",
+                "packaging-conan",
+                "compiler-clang-cl",
+                "buildtype-release",
+                "testing",
+                "common"
             ],
             "displayName": "Release",
             "description": "Optimized release build.",
@@ -180,25 +288,25 @@
         {
             "name": "release-msvc",
             "displayName": "Release (MSVC)",
-            "configurePreset": "build-release-msvc",
+            "configurePreset": "build-release-msvc-conan",
             "description": "Optimized release build."
         },
         {
             "name": "debug-msvc",
             "displayName": "Debug (MSVC)",
-            "configurePreset": "build-debug-msvc",
+            "configurePreset": "build-debug-msvc-conan",
             "description": "Debug build for testing."
         },
         {
             "name": "release-clang-cl",
             "displayName": "Release (Clang)",
-            "configurePreset": "build-release-clang-cl",
+            "configurePreset": "build-release-clang-cl-conan",
             "description": "Optimized release build."
         },
         {
             "name": "debug-clang-cl",
             "displayName": "Debug (Clang)",
-            "configurePreset": "build-debug-clang-cl",
+            "configurePreset": "build-debug-clang-cl-conan",
             "description": "Debug build for testing."
         }
     ],

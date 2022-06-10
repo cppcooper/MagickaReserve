@@ -8,14 +8,14 @@ complete and modern project from which to learn.
   * [Environment Setup](#environment-setup)
     * [Installing Visual Studio](#installing-visual-studio)
     * [Installing Git](#installing-git)
-    * [Vcpkg Install and Configuration](#vcpkg-install-and-configuration)
+    * [Conan Install](#conan-install)
   * [Cloning the Repository](#cloning-the-repository)
     * [Importing the Project into Your IDE](#importing-the-project-into-your-ide)
       * [Visual Studio](#visual-studio)
       * [Visual Studio Code](#visual-studio-code)
 * [Understanding the Project](#understanding-the-project)
   * [Build Features](#build-features)
-    * [Vcpkg Integration](#vcpkg-integration)
+    * [Conan Integration](#conan-integration)
     * [Multi-Runtime Builds](#multi-runtime-builds)
     * [Clang Support](#clang-support)
     * [Automatic Deployment](#automatic-deployment)
@@ -63,29 +63,9 @@ development workspaces in VS Code.
 If you do not already have Git installed, [download and install it](https://gitforwindows.org/) (you do not need to
 worry about the specific configuration options during install).
 
-#### Vcpkg Install and Configuration
-Vcpkg is a package manager for C/C++ libraries, which makes integrating third-party libraries into your project easy. It
-is also installed with Git. Clone Vcpkg and then set it up by running the following commands:
-
-```commandline
-git clone https://github.com/microsoft/vcpkg
-.\vcpkg\bootstrap-vcpkg.bat
-.\vcpkg\vcpkg integrate install
-```
-
-This project allows for using default Vcpkg configuration when none is externally specified (e.g. from the command line
-or when built as a dependency via Vcpkg). This makes development in your dev environment simpler. To auto-detect Vcpkg
-you must set an environment variable `VCPKG_ROOT` to the path to your Vcpkg install. To do so open Control
-Panel and go to System. On the left-hand side click About. You will now see an option on the right-hand side of the
-window for "Advanced system settings". You will get a window with a number of options; click "Environment Variables".
-
-![Environment Variables Button](docs/vcpkg-system-properties.png)
-
-In the environment variables screen click New and enter `VCPKG_ROOT` as the variable name. For the value,
-enter the full path to your Vcpkg install. Note that this variable is not picked up by currently-running applications,
-until they are restarted.
-
-![Environment Variables Settings](docs/vcpkg-env.png)
+#### Conan Install
+Conan is a package manager for C/C++ libraries, which makes integrating third-party libraries into your project easy. It
+can be installed from `https://conan.io`.
 
 ### Cloning the Repository
 Clone this repository to your local machine by running
@@ -136,7 +116,7 @@ your first SKSE plugin! You can find the DLL in the project directory under `bui
 The sample project comes with configuration out-of-the-box for doing Papyrus development in Visual Studio Code. Doing so
 requires that the Skyrim vanilla script sources, and the SKSE sources, are available. Therefore, you should load your
 project for C++ development in Visual Studio first, and wait until the CMake configuration has completed, before doing
-Papyrus development. The Vcpkg repository from the Skyrim NG project includes Vcpkg ports that automatically extract the
+Papyrus development. The Conan repository from the Skyrim NG project includes Vcpkg ports that automatically extract the
 necessary Papyrus script sources as a part of the CMake configuration process.
 
 One the CMake configuration is done, in Visual Studio Code go to `File -> Open Workspace From File...` and find the
@@ -145,45 +125,12 @@ everything prepared for Papyrus development.
 
 ## Understanding the Project
 ### Build Features
-#### Vcpkg Integration
-Like many SKSE projects, this sample project uses Vcpkg to manage dependencies that are needed to build and run the
-project. However one advanced feature seen here is the use of Vcpkg to manage even Skyrim-oriented dependencies.
-Traditionally projects like CommonLibSSE were included via a Git submodule. This has a number of disadvantages. It
-subjects CommonLibSSE to the build configuration for your project. It also requires you to list all the transitive
-dependencies in your own `vcpkg.json` file.
+#### Conan Integration
+This sample project uses Conan to manage dependencies that are needed to build and run the
+project. However, one advanced feature seen here is the use of Conan to manage even Skyrim-oriented dependencies.
 
-To solve this problem the Skyrim NG project has produced a public repository, available for all in the Skyrim and
-Fallout 4 communities, to use for their development. This repository includes a modern head of CommonLibSSE
-development (called `commonlibsse-ng`). This version of CommonLibSSE uniquely is capable of working with any version of
-Skyrim, not only at build-time, but at runtime as well. This library is also available in a precompiled form as
-`commonlibsse-ng-prebuilt`, which is being used here to save time. The resulting DLL can be used with Skyrim SE, AE, and
-Skyrim VR.
-
-```json
-{
-    "registries": [
-        {
-            "kind": "git",
-            "repository": "https://gitlab.com/colorglass/vcpkg-colorglass",
-            "baseline": "59ebdd824b295fad4effcdccfe6e6aaa47ff4764",
-            "packages": [
-              // ...
-            ]
-        }
-    ]
-}
-```
-
-The use of CommonLibSSE NG by default lets this sample project work with Skyrim SE, AE, and VR in a single build.
-
-Furthermore, this Vcpkg repository includes the ability to build and link to SKSE itself, as well as the ability to
-deploy the original Bethesda script sources and SKSE versions of those sources. Using the `bethesda-skyrim-scripts`
-port will cause Vcpkg to find your Skyrim installation via the registry and extract the script sources locally into
-your project build directory, allowing you to do local Papyrus development. SKSE scripts are also download and extracted
-when using the `skse` port's `scripts` feature.
-
-The availability of these projects is handled by the `vcpkg-configuration.json` file, which brings in the Skyrim NG
-repository hosted by Color-Glass Studios, and is a big step forward in streamlining the development process.
+To build, start with running `conan install . --build=missing`. This will set everything up for you. You can then build
+your project either from the IDE or with `conan build .` from the command line.
 
 #### Multi-Runtime Builds
 A major problem with developing for modern Skyrim is the fragmentation of Skyrim runtimes between pre-AE executables,
