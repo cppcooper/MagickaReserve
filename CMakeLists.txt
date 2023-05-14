@@ -1,13 +1,19 @@
 cmake_minimum_required(VERSION 3.21)
 message("Using toolchain file ${CMAKE_TOOLCHAIN_FILE}.")
 
+#"boost-stl-interfaces",
+#"frozen",
+#"rsm-binary-io",
+#"fmt",
+#"spdlog",
+#"xbyak"
+
 ########################################################################################################################
 ## Define project
 ########################################################################################################################
 project(
-        CommonLibSSESamplePlugin
+        ReservedMagicka
         VERSION 1.0.0
-        DESCRIPTION "A sample SKSE plugin built with CommonLibSSE."
         LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,15 +26,10 @@ configure_file(
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc
         @ONLY)
 
-set(headers
-        include/Sample/Sample.h)
-
+include_directories(include)
+file(GLOB_RECURSE sources LIST_DIRECTORIES false src/*)
 set(sources
-        src/Config.cpp
-        src/HitCounterManager.cpp
-        src/Main.cpp
-        src/Papyrus.cpp
-
+        ${sources}
         ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
 
 set(tests
