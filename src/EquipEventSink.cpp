@@ -5,7 +5,9 @@
 #include <RE/T/TESForm.h>
 #include <RE/T/TESGlobal.h>
 #include <RE/T/TESObjectARMO.h>
+#include <unordered_map>
 
+std::unordered_map<RE::FormID, std::shared_ptr<RE::InventoryEntryData>> Inventory;
 
 float MagnitudeAggregate = 0.f;
 
@@ -41,10 +43,10 @@ float GetMagnitude(RE::Effect* x) {
     return 0.f;
 }
 
-float Aggregate(RE::TESObjectARMO* thisArmor) {
+float Aggregate(RE::TESObjectARMO* thisArmor, std::unique_ptr<RE::InventoryEntryData> &entryData) {
     float magTotal = 0.f;
-    if (thisArmor) {
-        uint32_t count = 0;
+    uint32_t count = 0;
+    if (thisArmor && thisArmor->formEnchanting) {
         for (auto x: thisArmor->formEnchanting->effects) {
             auto m = GetMagnitude(x);
             magTotal += m;
@@ -53,9 +55,27 @@ float Aggregate(RE::TESObjectARMO* thisArmor) {
                 count++;
             }
         }
-        count = std::max(count, 1u);
-        magTotal /= (float) count;
     }
+    if (entryData && entryData->extraLists) {
+        for (auto &dataList : *entryData->extraLists) {
+            auto xench = dataList->GetByType<RE::ExtraEnchantment>();
+            if (!xench || !xench->enchantment) {
+                SKSE::log::info("Skipping, no xench or xench->enchantment");
+                continue;
+            }
+            SKSE::log::info("Enchantment found in extraLists");
+            for (auto x : xench->enchantment->effects) {
+                auto m = GetMagnitude(x);
+                magTotal += m;
+                SKSE::log::info("  magnitude: {}", m);
+                if (m > 0.f) {
+                    count++;
+                }
+            }
+        }
+    }
+    count = std::max(count, 1u);
+    magTotal /= (float) count;
     return magTotal;
 }
 
@@ -67,26 +87,40 @@ void ReApplySpell(RE::Actor* ref) {
     }
 }
 
+void HandleItem(RE::TESBoundObject* boundObject, std::unique_ptr<RE::InventoryEntryData> &entryData, bool equipped) {
+    auto player = RE::PlayerCharacter::GetSingleton();
+    if (boundObject->IsArmor()) {
+        float magTotal = Aggregate(boundObject->As<RE::TESObjectARMO>(), entryData);
+        magTotal *= equipped ? 1 : -1;
+        magTotal = (1 - GetReductionPercent()) * magTotal * GetMagPerMag();
+        if (magTotal != 0) {
+            float magicka = player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kMagicka);
+            MagnitudeAggregate += magTotal;
+            ReApplySpell(player);
+            SKSE::log::info(" Magicka Reserved: {}", MagnitudeAggregate);
+            SKSE::log::info("{} > {} = {}", magTotal, magicka, magTotal > magicka);
+            if (magTotal > magicka) {
+                SKSE::log::warn(" PC doesn't have enough magicka for this item to be equipped.");
+                RE::ActorEquipManager::GetSingleton()->UnequipObject(player, boundObject);
+            }
+        }
+    }
+}
+
 RE::BSEventNotifyControl EquipEventSink::ProcessEvent(const RE::TESEquipEvent *event, RE::BSTEventSource<RE::TESEquipEvent> *eventSource) {
     auto player = RE::PlayerCharacter::GetSingleton();
-    SKSE::log::info("Processing equip event event for base object '{}'", event->baseObject);
-    //auto form = RE::TESForm::LookupByID(event->baseObject);  //LookupByID<RE::TESObjectARMO>(event->baseObject);
-    auto thisArmor = RE::TESForm::LookupByID<RE::TESObjectARMO>(event->baseObject);
-    //SKSE::log::info("form: {}", form->GetName());
-    //auto thisArmor = form->As<RE::TESObjectARMO>();
-    if (thisArmor && thisArmor->formEnchanting) {
-        SKSE::log::info("Item is '{}'", thisArmor->GetFullName());
-        float magTotal = Aggregate(thisArmor);
-        magTotal *= event->equipped ? 1 : -1;
-        magTotal = (1 - GetReductionPercent()) * magTotal * GetMagPerMag();
-        float magicka = player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kMagicka);
-        MagnitudeAggregate += magTotal;
-        ReApplySpell(player);
-        SKSE::log::info(" Magicka Reserved: {}", MagnitudeAggregate);
-        SKSE::log::info("{} > {}", magTotal, magicka);
-        if (magTotal > magicka) {
-            SKSE::log::warn(" PC doesn't have enough magicka for this item to be equipped.");
-            RE::ActorEquipManager::GetSingleton()->UnequipObject(player, thisArmor);
+    if (event->actor.get() == player) {
+        auto inventory = RE::PlayerCharacter::GetSingleton()->GetInventory();
+        SKSE::log::info("\nProcessing ~~{}equip~~ event event for base object '{}'", event->equipped ? "" : "un", event->baseObject);
+        auto thisArmor = RE::TESForm::LookupByID<RE::TESObjectARMO>(event->baseObject);
+        if (thisArmor) {
+            auto iter = inventory.find(thisArmor);
+            bool suc = iter != inventory.end();
+            if (suc) {
+                auto &pair = iter->second;
+                //SKSE::log::info(" entryData name: {}", pair.second->GetDisplayName());
+                HandleItem(iter->first, pair.second, event->equipped);
+            }
         }
     }
     return RE::BSEventNotifyControl::kContinue;
@@ -95,22 +129,12 @@ RE::BSEventNotifyControl EquipEventSink::ProcessEvent(const RE::TESEquipEvent *e
 void InitializeEffectMagnitude() {
     auto player = RE::PlayerCharacter::GetSingleton();
     MagnitudeAggregate = 0.f;
+    SKSE::log::info("\nInitializing Magnitude");
     for (auto &[boundObject, pair] : player->GetInventory()) {
         auto &[quantity, entryData] = pair;
-        SKSE::log::info("Inventory: {}", entryData->GetDisplayName());
-        if (entryData->IsEnchanted() && entryData->IsWorn() && boundObject->IsArmor()) {
-            SKSE::log::info(" {} is enchanted, and being worn", entryData->GetDisplayName());
-            float magTotal = Aggregate(boundObject->As<RE::TESObjectARMO>());
-            magTotal = (1 - GetReductionPercent()) * magTotal * GetMagPerMag();
-            float magicka = player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kMagicka);
-            MagnitudeAggregate += magTotal;
-            ReApplySpell(player);
-            SKSE::log::info(" Magicka Reserved: {}", MagnitudeAggregate);
-            SKSE::log::info("{} > {}", magTotal, magicka);
-            if (magTotal > magicka) {
-                SKSE::log::warn(" PC doesn't have enough magicka for this item to be equipped.");
-                RE::ActorEquipManager::GetSingleton()->UnequipObject(player, boundObject);
-            }
+        if(entryData->IsWorn()) {
+            SKSE::log::info(" initialization reading worn item '{}'", boundObject->GetName());
+            HandleItem(boundObject, entryData, true);
         }
     }
 }
