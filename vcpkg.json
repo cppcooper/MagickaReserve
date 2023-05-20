@@ -13,7 +13,7 @@
         "spdlog",
         "srell",
         "articuno",
-        "commonlibsse-ng-flatrim",
+        "commonlibsse-ng",
         "xbyak"
     ],
     "builtin-baseline": "b49b2bdf22559c89eddbf29a29621a1dc6929320"
